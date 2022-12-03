@@ -3,7 +3,9 @@
 #include "main.h"
 #include "api.h"
 #include "auton.h"
+#include "okapi/api/util/abstractRate.hpp"
 #include "pid.h"
+#include "pros/misc.h"
 #include "robot.h"
 
 using namespace pros;
@@ -117,6 +119,36 @@ void competition_initialize() {
  * task, not resume it from where it left off.
  */
 
+void arcadeDrive()
+{
+		// Arcade Drive
+		int power = con.get_analog(ANALOG_LEFT_Y); //power is defined as forward or backward
+		int RX = con.get_analog(ANALOG_RIGHT_X); //turn is defined as left (positive) or right (negative)
+		int turn = int(abs(RX) * RX / 75);
+		int left = power + turn;
+		int right = power - turn;
+
+    LF.move(left);
+    LM.move(left);
+    LB.move(left);
+    RF.move(right);
+    RM.move(right);
+    RB.move(right);
+}
+
+double motorLeftAvg()
+{
+  return ((LF.get_position() + LM.get_position() + LB.get_position()) / 3);
+}
+double motorRightAvg()
+{
+  return ((RF.get_position() + RM.get_position() + RB.get_position()) / 3);
+}
+double motorAvg()
+{
+  return ((motorLeftAvg() + motorRightAvg()) / 2);
+}
+
 int cycle = 0;
 int wait = 900;
 int wait2 = 250;
@@ -129,117 +161,65 @@ bool rollerOn = false;
 
 void opcontrol() {
   int time = 0;
-  bool arcToggle = false;
-  bool tankToggle = true;
+  bool drive = false;
+  int forwardAmount = 1000; // Motor Encoder Position
+  int turnAmount = 90; // Degrees
+  bool displayPage = 1; // Bool for 2 page
 
 	while (true) {
-    //printing stuff
-		double chasstempC = ((RF.get_temperature() + RB.get_temperature() + LF.get_temperature() + LB.get_temperature())/4);
-		double chasstempF = chasstempC *(9/5) + 32;
-		
-    if (time % 100 == 0) con.clear();
-		
-    else if (time % 50 == 0) {
-			cycle++;
-      // if (cycle % 3 == 0) con.print(0, 0, "Aut: %s", ); //autstr //%s
-		  if ((cycle+2) % 3 == 0) con.print(2, 0, "Temp: %f", chasstempC);
-		}
-
-		//chassis arcade drive
-		int power = con.get_analog(ANALOG_LEFT_Y); //power is defined as forward or backward
-		int RX = con.get_analog(ANALOG_RIGHT_X); //turn is defined as left (positive) or right (negative)
-
-		int turn = int(abs(RX) * RX / 75);
-		int left = power + turn;
-		int right = power - turn;
-
-    if (con.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_A)) {
-      arcToggle = !arcToggle;
-      tankToggle = !tankToggle;
-    }
-    if (tankToggle) {
-      LF.move(con.get_analog(ANALOG_LEFT_Y));
-      LM.move(con.get_analog(ANALOG_LEFT_Y));
-      LB.move(con.get_analog(ANALOG_LEFT_Y));
-      RF.move(con.get_analog(ANALOG_RIGHT_Y));
-      RM.move(con.get_analog(ANALOG_RIGHT_Y));
-      RB.move(con.get_analog(ANALOG_RIGHT_Y));
-    }
-    if (arcToggle) {
-      LF.move(left);
-      LM.move(left);
-      LB.move(left);
-      RF.move(right);
-      RM.move(right);
-      RB.move(right);
+    
+    // Controller Display
+    if (con.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_R1)) displayPage = !displayPage;
+    if (displayPage)
+    {
+      if (time % 100 == 0) con.clear();
+      else if (time % 50 == 0) {
+        cycle++;
+        if (cycle % 3 == 0) con.print(0, 0, "MotorAvg %d", motorAvg());
+        if ((cycle+1) % 3 == 0) con.print(1, 0, "Target+: %d", forwardAmount);
+        if ((cycle+2) % 3 == 0) con.print(2, 0, "Error: %d", (forwardAmount-motorAvg()));
+      }
+    } else if (!displayPage)
+    {
+      if (time % 100 == 0) con.clear();
+      else if (time % 50 == 0) {
+        cycle++;
+        if (cycle % 3 == 0) con.print(0, 0, "IMU %f", imu.get_heading());
+        if ((cycle+1) % 3 == 0) con.print(1, 0, "Target+: %f", turnAmount);
+        if ((cycle+2) % 3 == 0) con.print(2, 0, "Error: %f", (turnAmount-imu.get_heading()));
+      }
     }
 
+    // Drive
+    if (con.get_digital_new_press(E_CONTROLLER_DIGITAL_R2)) drive = !drive;
+    if (drive) arcadeDrive();
 
-    //auton selector
-    if(selec.get_value() == true){ // brain was here
-      atn ++;
-      delay(350);
-    }
+    // Encoder Tare
+		if (con.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_L1)) resetEncoders();
 
-    if (atn == 1){
-      autstr = "Red Non-Roller";
+    // Forward Test
+    if (con.get_digital_new_press(E_CONTROLLER_DIGITAL_UP))
+    {
+      driveStraight(forwardAmount);
+      displayPage = true;
     }
-    else if(atn == 2){
-      autstr = "Blue Non-Roller";
+    if (con.get_digital_new_press(E_CONTROLLER_DIGITAL_DOWN))
+    {
+      driveStraight(-forwardAmount);
+      displayPage = true;
     }
-    else if(atn == 3){
-      autstr = "Red Roller";
+    
+    // Turn Test
+    if (con.get_digital_new_press(E_CONTROLLER_DIGITAL_RIGHT))
+    {
+      driveTurn(turnAmount);
+      displayPage = false;
     }
-    else if(atn == 4){
-      autstr = "Blue Roller";
+    if (con.get_digital_new_press(E_CONTROLLER_DIGITAL_DOWN))
+    {
+      driveTurn(-turnAmount);
+      displayPage = false;
     }
-    else if(atn == 5){
-      autstr = "Skip";
-    }
-    else if(atn == 6){
-      autstr = "Skills";
-    }
-
-    //intake
-		if (con.get_digital(E_CONTROLLER_DIGITAL_R1)) {
-			INTAKE.move(127);
-		}
-		else if (con.get_digital(E_CONTROLLER_DIGITAL_R2)) {
-			INTAKE.move(-127);
-		}
-		else {
-			INTAKE.move(0);
-		}
-
-    //cata
-    if ((con.get_digital(E_CONTROLLER_DIGITAL_L1) == true) || (catalim.get_value() == false)) {
-			CATA.move(-127);
-		}
-    else {
-      CATA.move(0);
-    }
-		
-		//angler (might use for v2)
-		// if (con.get_digital_new_press(E_CONTROLLER_DIGITAL_Y)) {
-		// 	if (anglerToggle == false) {
-		// 		angler.set_value(false);
-		// 		anglerToggle = true;
-		// 	}
-    //   else {
-		// 		angler.set_value(true);
-		// 		anglerToggle = false;
-		// 	}
-		// }
-
-    //expansion
-    if (con.get_digital(pros::E_CONTROLLER_DIGITAL_LEFT)) {
-			expand.set_value(true);
-		}
-
-    //reset all motor encoders
-		if (con.get_digital_new_press(E_CONTROLLER_DIGITAL_DOWN)) {
-			resetEncoders();
-		}
 
 		time += 10;
 		pros::delay(10);

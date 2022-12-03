@@ -18,8 +18,8 @@ extern void driveAim(int target);
 
 
 //tune straight constants here: setConstants(STRAIGHT_KP, STRAIGHT_KI, STRAIGHT_KD);
-#define STRAIGHT_KP 19 // 
-#define STRAIGHT_KI 0.75 // 
+#define STRAIGHT_KP 1 // 
+#define STRAIGHT_KI 1 // 
 #define STRAIGHT_KD 0 // 
 
 //tune straight integral-specific here: voltage = calcPID(target, encoderAvg, STRAIGHT_INTEGRAL_KI, STRAIGHT_MAX_INTEGRAL);
