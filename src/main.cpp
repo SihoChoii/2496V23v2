@@ -157,6 +157,7 @@ void opcontrol() {
       arcToggle = !arcToggle;
       tankToggle = !tankToggle;
     }
+    
     if (tankToggle) {
       LF.move(con.get_analog(ANALOG_LEFT_Y));
       LM.move(con.get_analog(ANALOG_LEFT_Y));
@@ -164,8 +165,7 @@ void opcontrol() {
       RF.move(con.get_analog(ANALOG_RIGHT_Y));
       RM.move(con.get_analog(ANALOG_RIGHT_Y));
       RB.move(con.get_analog(ANALOG_RIGHT_Y));
-    }
-    if (arcToggle) {
+    } else if (arcToggle) {
       LF.move(left);
       LM.move(left);
       LB.move(left);
