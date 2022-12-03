@@ -45,24 +45,11 @@ pros::ADIDigitalOut expand ({{3, 8}});
 //auton selector
 pros::ADIDigitalIn selec ({{3, 7}});
 
-//sensors
-pros::ADIEncoder encLeft ({{1, 1, 2}, false});
-pros::ADIEncoder encRight ({{1, 3, 4}, false});
-pros::ADIEncoder encMid ({{1, 5, 6}, false});
-
+//imu
 pros::Imu imu (IMU_PORT);
 
 //controller
 pros::Controller con (pros::E_CONTROLLER_MASTER);
-
-//gps
-#define X_OFFSET .225
-#define Y_OFFSET .223
-#define X_INITIAL 1.54
-#define Y_INITIAL 1.14
-#define HEADING_INITIAL 90
-pros::Gps gps1(GPS_PORT, X_INITIAL, Y_INITIAL, HEADING_INITIAL, X_OFFSET, Y_OFFSET);
-pros::c::gps_status_s_t gpsData;
 
 //optical
 pros::Optical optical(OPTICAL_PORT);
